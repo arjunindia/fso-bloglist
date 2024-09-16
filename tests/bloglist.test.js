@@ -66,11 +66,22 @@ test("a valid blog can be added ", async () => {
 
   const response = await api.get("/api/blogs");
 
-  const contents = response.body.map((r) => r.title);
+  const titles = response.body.map((r) => r.title);
+  const authors = response.body.map((r) => r.author);
 
   assert.strictEqual(response.body.length, initialBlogs.length + 1);
 
-  assert(contents.includes("Async Await"));
+  assert(titles.includes("Async Await"));
+  assert(authors.includes("TC39"));
+});
+
+test("Result contains the `id` parameter", async () => {
+  const response = await api.get("/api/blogs");
+  const filtered = response.body.filter((blog) => {
+    if (blog.id && !blog._id) return true;
+  });
+
+  assert.strictEqual(filtered.length, initialBlogs.length);
 });
 
 after(async () => {
