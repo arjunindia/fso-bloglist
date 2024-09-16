@@ -4,8 +4,9 @@
   "description": "BlogList is an app made in the fullstackopen course.",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js",
-    "test": "node --test"
+    "start": "NODE_ENV=production node index.js",
+    "dev": "NODE_ENV=development nodemon index.js",
+    "test": "NODE_ENV=test node --test"
   },
   "author": "Arjun S",
   "license": "ISC",
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "dotenv": "^16.4.5",
-    "nodemon": "^3.1.4"
+    "nodemon": "^3.1.4",
+    "supertest": "^7.0.0"
   }
 }
