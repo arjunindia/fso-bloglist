@@ -67,12 +67,55 @@ test("a valid blog can be added ", async () => {
   const response = await api.get("/api/blogs");
 
   const titles = response.body.map((r) => r.title);
-  const authors = response.body.map((r) => r.author);
+  const urls = response.body.map((r) => r.url);
 
   assert.strictEqual(response.body.length, initialBlogs.length + 1);
 
   assert(titles.includes("Async Await"));
-  assert(authors.includes("TC39"));
+  assert(urls.includes("https://github.com/tc39/proposal-async-await"));
+});
+
+test("If new blog added does not have like parameter it defaults to 0", async () => {
+  const newBlog = {
+    title: "Async Await",
+    author: "TC39",
+    url: "https://github.com/tc39/proposal-async-await",
+  };
+
+  await api
+    .post("/api/blogs")
+    .send(newBlog)
+    .expect(201)
+    .expect("Content-Type", /application\/json/);
+
+  const response = await api.get("/api/blogs");
+
+  const currAdded = response.body.find((r) => r.author === "TC39");
+
+  assert.strictEqual(currAdded.likes, 0);
+});
+
+test("if the title or url properties are missing, status 400", async () => {
+  const noTitleBlog = {
+    author: "TC39",
+    url: "https://github.com/tc39/proposal-async-await",
+  };
+
+  const noUrlBlog = {
+    title: "Async Await",
+    author: "TC39",
+  };
+
+  await api
+    .post("/api/blogs")
+    .send(noTitleBlog)
+    .expect(400)
+    .expect("Content-Type", /application\/json/);
+  await api
+    .post("/api/blogs")
+    .send(noUrlBlog)
+    .expect(400)
+    .expect("Content-Type", /application\/json/);
 });
 
 test("Result contains the `id` parameter", async () => {
