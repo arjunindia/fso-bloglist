@@ -127,6 +127,35 @@ test("Result contains the `id` parameter", async () => {
   assert.strictEqual(filtered.length, initialBlogs.length);
 });
 
+test("Can delete using API", async () => {
+  const response = await api.get("/api/blogs");
+  const firstId = response.body[0].id;
+  const firstTitle = response.body[0].title;
+  const deleteResponse = await api.delete("/api/blogs/" + firstId);
+  assert.strictEqual(deleteResponse.body.title, firstTitle);
+  const afterResponse = await api.get("/api/blogs");
+  assert.strictEqual(afterResponse.body.length, 1);
+  await api.delete("/api/blogs/" + "598278573289578927").expect(400);
+});
+
+test("Can update using API", async () => {
+  const response = await api.get("/api/blogs");
+  const firstId = response.body[0].id;
+  const toUpdate = {
+    title: "HI!",
+    likes: 200,
+  };
+  const updateResponse = await api.put("/api/blogs/" + firstId).send(toUpdate);
+  assert.strictEqual(toUpdate.title, updateResponse.body.title);
+  assert.strictEqual(toUpdate.likes, updateResponse.body.likes);
+  const afterResponse = await api.get("/api/blogs");
+  const afterValue = afterResponse.body.find(
+    (blog) => blog.title === toUpdate.title,
+  );
+  assert.strictEqual(afterValue.likes, toUpdate.likes);
+  await api.put("/api/blogs/" + "598278573289578927").expect(400);
+});
+
 after(async () => {
   await mongoose.connection.close();
 });
