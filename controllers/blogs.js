@@ -4,12 +4,18 @@ const Blog = require("../models/blogs");
 const User = require("../models/users");
 
 blogsRouter.get("/", async (_request, response) => {
-  const blogs = await Blog.find({});
+  const blogs = await Blog.find({}).populate("user");
   response.json(blogs);
 });
 
 blogsRouter.post("/", async (request, response, next) => {
-  const user = await User.findById(request.user.id);
+  if (request.body === undefined)
+    return response.status(400).json({ error: "Invalid body!" });
+  let user;
+  if (request.userId === undefined) {
+    // get any user, like the first one
+    user = await User.findOne();
+  } else user = await User.findById(request.userId);
   const blog = new Blog({
     title: request.body.title,
     author: request.body.author,
