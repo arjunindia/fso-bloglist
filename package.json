@@ -6,11 +6,12 @@
   "scripts": {
     "start": "NODE_ENV=production node index.js",
     "dev": "NODE_ENV=development nodemon index.js",
-    "test": "NODE_ENV=test node --test"
+    "test": "NODE_ENV=test node --test --test-concurrency=1"
   },
   "author": "Arjun S",
   "license": "ISC",
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "express": "^4.21.0",
     "mongoose": "^8.6.2"
