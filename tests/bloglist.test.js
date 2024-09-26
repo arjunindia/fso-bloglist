@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const supertest = require("supertest");
 const app = require("../app");
 const Blog = require("../models/blogs");
+const User = require("../models/users");
 
 const api = supertest(app);
 
@@ -29,12 +30,38 @@ const initialBlogs = [
   },
 ];
 
+const initialUsers = [
+  {
+    username: "arjun",
+    name: "Arjun",
+    passwordHash:
+      "$2a$10$ZP5fu.JZlSUdPR11gqel4uZ0HMBQoDuDNw2Pc.L7P2jc8ETDFnd7O", // "arjun"
+    blogs: [initialBlogs[0]._id, initialBlogs[1]._id],
+  },
+  {
+    username: "Bram",
+    name: "Bram",
+    passwordHash:
+      "$2a$10$AmEXo0m6Cz3y0KhKeU6hSONHd.0CiPke/fg7puC/YNJ/UbPPJNruO", // "bram"
+    blogs: [initialBlogs[1]._id],
+  },
+];
+
 beforeEach(async () => {
   await Blog.deleteMany({});
-  let blogObject = new Blog(initialBlogs[0]);
-  await blogObject.save();
-  blogObject = new Blog(initialBlogs[1]);
-  await blogObject.save();
+  const blogObject1 = new Blog(initialBlogs[0]);
+  await blogObject1.save();
+  const blogObject2 = new Blog(initialBlogs[1]);
+  await blogObject2.save();
+
+  await User.deleteMany({});
+  let userObject = new User(initialUsers[0]);
+  userObject.blogs.push(blogObject1._id);
+  userObject.blogs.push(blogObject2._id);
+  await userObject.save();
+  userObject = new User(initialUsers[1]);
+  userObject.blogs.push(blogObject2._id);
+  await userObject.save();
 });
 
 test("there are two blogs", async () => {
@@ -51,6 +78,13 @@ test("the blog list contains Dracula entry", async () => {
 });
 
 test("a valid blog can be added ", async () => {
+  const token = await api
+    .post("/api/login")
+    .send({ username: "arjun", password: "arjun" })
+    .expect(200)
+    .expect("Content-Type", /application\/json/)
+    .then((res) => res.body.token);
+
   const newBlog = {
     title: "Async Await",
     author: "TC39",
@@ -61,6 +95,7 @@ test("a valid blog can be added ", async () => {
   await api
     .post("/api/blogs")
     .send(newBlog)
+    .set("Authorization", `Bearer ${token}`)
     .expect(201)
     .expect("Content-Type", /application\/json/);
 
@@ -76,6 +111,13 @@ test("a valid blog can be added ", async () => {
 });
 
 test("If new blog added does not have like parameter it defaults to 0", async () => {
+  const token = await api
+    .post("/api/login")
+    .send({ username: "arjun", password: "arjun" })
+    .expect(200)
+    .expect("Content-Type", /application\/json/)
+    .then((res) => res.body.token);
+
   const newBlog = {
     title: "Async Await",
     author: "TC39",
@@ -84,6 +126,7 @@ test("If new blog added does not have like parameter it defaults to 0", async ()
 
   await api
     .post("/api/blogs")
+    .set("Authorization", `Bearer ${token}`)
     .send(newBlog)
     .expect(201)
     .expect("Content-Type", /application\/json/);
@@ -96,6 +139,13 @@ test("If new blog added does not have like parameter it defaults to 0", async ()
 });
 
 test("if the title or url properties are missing, status 400", async () => {
+  const token = await api
+    .post("/api/login")
+    .send({ username: "arjun", password: "arjun" })
+    .expect(200)
+    .expect("Content-Type", /application\/json/)
+    .then((res) => res.body.token);
+
   const noTitleBlog = {
     author: "TC39",
     url: "https://github.com/tc39/proposal-async-await",
@@ -108,11 +158,13 @@ test("if the title or url properties are missing, status 400", async () => {
 
   await api
     .post("/api/blogs")
+    .set("Authorization", `Bearer ${token}`)
     .send(noTitleBlog)
     .expect(400)
     .expect("Content-Type", /application\/json/);
   await api
     .post("/api/blogs")
+    .set("Authorization", `Bearer ${token}`)
     .send(noUrlBlog)
     .expect(400)
     .expect("Content-Type", /application\/json/);
@@ -131,11 +183,24 @@ test("Can delete using API", async () => {
   const response = await api.get("/api/blogs");
   const firstId = response.body[0].id;
   const firstTitle = response.body[0].title;
-  const deleteResponse = await api.delete("/api/blogs/" + firstId);
+
+  const token = await api
+    .post("/api/login")
+    .send({ username: "arjun", password: "arjun" })
+    .expect(200)
+    .expect("Content-Type", /application\/json/)
+    .then((res) => res.body.token);
+
+  const deleteResponse = await api
+    .delete("/api/blogs/" + firstId)
+    .set("Authorization", `Bearer ${token}`);
   assert.strictEqual(deleteResponse.body.title, firstTitle);
   const afterResponse = await api.get("/api/blogs");
   assert.strictEqual(afterResponse.body.length, 1);
-  await api.delete("/api/blogs/" + "598278573289578927").expect(400);
+  await api
+    .delete("/api/blogs/" + "598278573289578927")
+    .set("Authorization", `Bearer ${token}`)
+    .expect(401 || 400);
 });
 
 test("Can update using API", async () => {
@@ -145,7 +210,17 @@ test("Can update using API", async () => {
     title: "HI!",
     likes: 200,
   };
-  const updateResponse = await api.put("/api/blogs/" + firstId).send(toUpdate);
+
+  const token = await api
+    .post("/api/login")
+    .send({ username: "arjun", password: "arjun" })
+    .expect(200)
+    .expect("Content-Type", /application\/json/)
+    .then((res) => res.body.token);
+  const updateResponse = await api
+    .put("/api/blogs/" + firstId)
+    .send(toUpdate)
+    .set("Authorization", `Bearer ${token}`);
   assert.strictEqual(toUpdate.title, updateResponse.body.title);
   assert.strictEqual(toUpdate.likes, updateResponse.body.likes);
   const afterResponse = await api.get("/api/blogs");
@@ -153,7 +228,10 @@ test("Can update using API", async () => {
     (blog) => blog.title === toUpdate.title,
   );
   assert.strictEqual(afterValue.likes, toUpdate.likes);
-  await api.put("/api/blogs/" + "598278573289578927").expect(400);
+  await api
+    .put("/api/blogs/" + "598278573289578927")
+    .set("Authorization", `Bearer ${token}`)
+    .expect(400);
 });
 
 after(async () => {
