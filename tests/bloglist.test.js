@@ -36,14 +36,12 @@ const initialUsers = [
     name: "Arjun",
     passwordHash:
       "$2a$10$ZP5fu.JZlSUdPR11gqel4uZ0HMBQoDuDNw2Pc.L7P2jc8ETDFnd7O", // "arjun"
-    blogs: [initialBlogs[0]._id, initialBlogs[1]._id],
   },
   {
     username: "Bram",
     name: "Bram",
     passwordHash:
       "$2a$10$AmEXo0m6Cz3y0KhKeU6hSONHd.0CiPke/fg7puC/YNJ/UbPPJNruO", // "bram"
-    blogs: [initialBlogs[1]._id],
   },
 ];
 
@@ -60,7 +58,6 @@ beforeEach(async () => {
   userObject.blogs.push(blogObject2._id);
   await userObject.save();
   userObject = new User(initialUsers[1]);
-  userObject.blogs.push(blogObject2._id);
   await userObject.save();
 });
 
@@ -108,6 +105,21 @@ test("a valid blog can be added ", async () => {
 
   assert(titles.includes("Async Await"));
   assert(urls.includes("https://github.com/tc39/proposal-async-await"));
+});
+
+test("401 if not logged in", async () => {
+  const newBlog = {
+    title: "Async Await",
+    author: "TC39",
+    url: "https://github.com/tc39/proposal-async-await",
+    likes: 1600,
+  };
+
+  await api
+    .post("/api/blogs")
+    .send(newBlog)
+    .expect(401)
+    .expect("Content-Type", /application\/json/);
 });
 
 test("If new blog added does not have like parameter it defaults to 0", async () => {
@@ -201,6 +213,34 @@ test("Can delete using API", async () => {
     .delete("/api/blogs/" + "598278573289578927")
     .set("Authorization", `Bearer ${token}`)
     .expect(401 || 400);
+});
+
+test("401 if not logged in", async () => {
+  const response = await api.get("/api/blogs");
+  const firstId = response.body[0].id;
+
+  await api
+    .delete("/api/blogs/" + firstId)
+    .expect(401)
+    .expect("Content-Type", /application\/json/);
+});
+
+test("401 if deleted blog does not belong to user", async () => {
+  const response = await api.get("/api/blogs");
+  const firstId = response.body[0].id;
+
+  const token = await api
+    .post("/api/login")
+    .send({ username: "Bram", password: "bram" })
+    .expect(200)
+    .expect("Content-Type", /application\/json/)
+    .then((res) => res.body.token);
+
+  await api
+    .delete("/api/blogs/" + firstId)
+    .set("Authorization", `Bearer ${token}`)
+    .expect(401)
+    .expect("Content-Type", /application\/json/);
 });
 
 test("Can update using API", async () => {
